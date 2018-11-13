@@ -2,11 +2,14 @@
 Simple Facebook Echo bot: Respond with exactly what it receives
 Standalone version
 """
-
+from __future__ import unicode_literals
 import sys, json, traceback, requests
 from flask import Flask, request
 from Utils import NLP
+from pattern.en import parsetree, singularize
 
+
+noun_phrases_remember = ""
 application = Flask(__name__)
 app = application
 PAT = 'EAADfGuSGJJEBAEBhc9sXjkGZArKohFKUpfWXwMQxgU7NeLZBEm5ZBDJfnkIVWQHuXv5mkLfJpZB1aIye1ZB3kjTu0ZCdOqzZA0w98fZAHwicsppfAeTwDZBZCa9o6MzL0tE2TcwfG25JqJZA6Bbdj9eMv8K33NSea4W7FDjaWWUNmq7WgZDZD'
@@ -31,35 +34,63 @@ def handle_messages():
         # Start processing valid requests
         try:
             response = processIncoming(sender_id, message)
+            if response != "send alr":
+                if response is not None:
+                    send_message(PAT, sender_id, response)
+                else:
+                    send_message(PAT, sender_id, "Sorry I don't understand that")
 
-            if response is not None:
-                send_message(PAT, sender_id, response)
-
-            else:
-                send_message(PAT, sender_id, "Sorry I don't understand that")
         except Exception, e:
             print e
             traceback.print_exc()
     return "ok"
 
 def processIncoming(user_id, message):
+    global noun_phrases_remember
     if message['type'] == 'text':
         message_text = message['data']
+        if message_text[-1] != ".": # help separate sentence for parsetree
+            dotted_message = message_text + "."
+        s = parsetree(dotted_message, relations=True, lemmata=True)
+        sentence = s[0]
 
-        if NLP.isAskingBotInformation(message_text):
+        if NLP.isGreetings(message_text):
+            return "Hey whassup? How can I help you?"
+
+        elif NLP.isAskingBotInformation(message_text):
             return NLP.handleBotInfo(message_text)
-        return message_text
+
+        elif NLP.isAskingRestaurant(sentence, message_text):
+            rest_data, noun_phrases_remember = NLP.handle_find_rest(sentence)
+            if rest_data == None:
+                return "Can you send me your location? :D"
+            elif len(rest_data) == 0:
+                return "No result found, sorry :("
+            else:
+                send_yelp_results(PAT, user_id, rest_data['businesses'])
+                return 'send alr'
+
+        elif NLP.isGoodbye(message_text):
+            noun_phrases_remember = ""
+            return "Goodbye!!!"
+
+        return "I don't understand this ._."
 
     elif message['type'] == 'location':
-        response = "I've received location (%s,%s) (y)"%(message['data'][0],message['data'][1])
-        return response
 
-    elif message['type'] == 'audio':
-        audio_url = message['data']
-        return "I've received audio %s"%(audio_url)
+        rest_data = NLP.handle_location(noun_phrases_remember, message['data'])
+        if len(rest_data) == 0:
+            return "No result found, sorry :("
+        else:
+            send_yelp_results(PAT, user_id, rest_data['businesses'])
+            noun_phrases_remember = ""
+            return 'send alr'
+
+        return "Hmm..."
 
     # Unrecognizable incoming, remove context and reset all data to start afresh
     else:
+        noun_phrases_remember = ""
         return "*scratch my head*"
 
 
@@ -71,6 +102,57 @@ def send_message(token, user_id, text):
                       data=json.dumps({
                           "recipient": {"id": user_id},
                           "message": {"text": text.decode('unicode_escape')}
+                      }),
+                      headers={'Content-type': 'application/json'})
+    if r.status_code != requests.codes.ok:
+        print r.text
+
+
+def send_yelp_results(token, user_id, businesses):
+    options = []
+
+    for business in businesses:
+        subtitle = ""
+        if 'price' in business and business['price'] != "":
+            subtitle += business['price'] + " - "
+        subtitle += business['location']['address1']
+        if 'distance' in business:
+            subtitle += " (" + str(round(business['distance'], 1)) + " meters)"
+        if 'is_open_now' in business:
+            subtitle += "\n" + "Open now - " if business['is_open_now'] else "\n"
+        if 'hours_today' in business and len(business['hours_today']) > 0:
+            subtitle += "Hours today: %s"%(business['hours_today'])
+        subtitle += "\n" + business['categories'][0]['title']
+
+        img_url = business['image_url'] if business['image_url'] != "" else url_for('static', filename='assets/img/empty-placeholder.jpg', _external=True)
+
+        obj = {
+                "title": business['name'] + " - " + str(business['rating']) ,
+                "image_url": img_url,
+                "subtitle": subtitle,
+                "buttons":[
+                    {
+                    "type":"web_url",
+                    "url": business['url'],
+                    "title":"View details"
+                    }
+
+                ]
+                }
+        options.append(obj)
+    r = requests.post("https://graph.facebook.com/v2.6/me/messages",
+                      params={"access_token": token},
+                      data=json.dumps({
+                            "recipient": {"id": user_id},
+                            "message":{
+                                "attachment":{
+                                    "type":"template",
+                                    "payload":{
+                                        "template_type":"generic",
+                                        "elements": options
+                                    }
+                                }
+                            }
                       }),
                       headers={'Content-type': 'application/json'})
     if r.status_code != requests.codes.ok:
