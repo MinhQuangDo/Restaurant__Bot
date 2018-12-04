@@ -62,7 +62,7 @@ def processIncoming(user_id, message):
 
         elif NLP.isAskingRestaurant(sentence, message_text):
             rest_data, noun_phrases_remember = NLP.handle_find_rest(sentence)
-            if rest_data == None:
+            if rest_data is None:
                 return "Can you send me your location? :D"
             elif len(rest_data) == 0:
                 return "No result found, sorry :("
