@@ -11,24 +11,13 @@ spacy.prefer_gpu()
 nlp = spacy.load('en_core_web_sm')
 
 
-
-# rest_list = []
-# for line in open('yelp_dataset/yelp_academic_dataset_business.json', 'r'):
-#     rest_list.append(json.loads(line))
-
-category = ""
-rating = ""
-city = ""
-
 MY_API_KEY = "F7e2qnuOw-oNAD-ygIhScfzLjiuqmXX3_de76ztQSxUZRbzDiLmD0NrHom8JcZDTFt3IB5IobbDDxFglllPougjfuricDH1f2fVbPpf9IW9g8EUZByHAmOwbNlHeW3Yx"
-# yelpClient = Client3(MY_API_KEY)
 
 yelp_api = YelpAPI(MY_API_KEY)
 
 
 def isAskingBotInformation(sentence):
     print(sentence)
-    # m = search('what *+ your name', sentence)
     m = re.search(r'your name', sentence, re.IGNORECASE)
     if m:
         return True
