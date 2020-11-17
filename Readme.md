@@ -85,7 +85,7 @@ After receiving the command, it would ask for your location. You then need to se
 
 ![Location Search](img/location-search.jpg)
 
-Optimist Prime leverage Yelp's API. Included in the code is both the APIv2 (stable) and APIv3 (developer preview). Both require you to acquire their API key.
+Restaurant__Bot leverage Yelp's API. Included in the code is both the APIv2 (stable) and APIv3 (developer preview). Both require you to acquire their API key.
 
 [Get API key for v2](https://www.yelp.com/developers/manage_api_keys)
 
