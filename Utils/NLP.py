@@ -11,7 +11,7 @@ spacy.prefer_gpu()
 nlp = spacy.load('en_core_web_sm')
 
 
-MY_API_KEY = "F7e2qnuOw-oNAD-ygIhScfzLjiuqmXX3_de76ztQSxUZRbzDiLmD0NrHom8JcZDTFt3IB5IobbDDxFglllPougjfuricDH1f2fVbPpf9IW9g8EUZByHAmOwbNlHeW3Yx"
+MY_API_KEY = "Insert Yelp API Key here"
 
 yelp_api = YelpAPI(MY_API_KEY)
 
